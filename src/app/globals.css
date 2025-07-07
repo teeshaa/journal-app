@@ -4,26 +4,26 @@
 
 /* Modern Design System Variables */
 :root {
-  /* Colors - Sophisticated palette */
-  --background: #fafafa;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #5b21b6;
-  --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #1f2937;
-  --muted: #f9fafb;
-  --muted-foreground: #6b7280;
-  --accent: #8b5cf6;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #8b5cf6;
+  /* Colors - Sophisticated palette (HSL format for Tailwind) */
+  --background: 0 0% 98%;
+  --foreground: 0 0% 4%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 4%;
+  --primary: 256 91% 43%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 215 28% 17%;
+  --muted: 220 14% 98%;
+  --muted-foreground: 220 9% 46%;
+  --accent: 262 83% 58%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 262 83% 58%;
   --radius: 16px;
   
   /* Gradients */
@@ -45,35 +45,35 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #fafafa;
-    --card: #141414;
-    --card-foreground: #fafafa;
-    --popover: #141414;
-    --popover-foreground: #fafafa;
-    --primary: #8b5cf6;
-    --primary-foreground: #ffffff;
-    --secondary: #262626;
-    --secondary-foreground: #e5e7eb;
-    --muted: #262626;
-    --muted-foreground: #9ca3af;
-    --accent: #7c3aed;
-    --accent-foreground: #ffffff;
-    --destructive: #dc2626;
-    --destructive-foreground: #ffffff;
-    --border: #262626;
-    --input: #262626;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 220 13% 91%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 220 9% 64%;
+    --accent: 268 83% 66%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 59%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
   }
 }
 
 /* Base styles */
 * {
-  border-color: var(--border);
+  border-color: hsl(var(--border));
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   font-feature-settings: "rlig" 1, "calt" 1;
   min-height: 100vh;
@@ -127,12 +127,9 @@ body {
 
   /* Modern Card Styles */
   .card-base {
-    background: var(--card);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
+    @apply bg-card border border-border rounded-lg shadow-sm transition-all duration-200;
     box-shadow: var(--shadow-sm);
     overflow: hidden;
-    transition: all 0.2s ease;
   }
 
   .card-hover:hover {
@@ -170,7 +167,7 @@ body {
   }
 
   .btn-primary {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary;
+    @apply text-white focus-visible:ring-primary;
     background: var(--gradient-primary);
     box-shadow: 0 4px 20px -2px rgba(139, 92, 246, 0.3);
   }
@@ -194,12 +191,12 @@ body {
 
   /* Modern Input Styles */
   .input-modern {
-    @apply flex h-12 w-full rounded-xl border bg-background px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all;
+    @apply flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all;
     font-size: 16px; /* Prevent zoom on mobile */
   }
 
   .textarea-modern {
-    @apply flex min-h-[120px] w-full rounded-xl border bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none transition-all;
+    @apply flex min-h-[120px] w-full rounded-xl border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none transition-all;
     font-size: 16px; /* Prevent zoom on mobile */
   }
 
@@ -269,24 +266,24 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--muted);
+  background: hsl(var(--muted));
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--muted-foreground);
+  background: hsl(var(--muted-foreground));
   border-radius: 5px;
   transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--foreground);
+  background: hsl(var(--foreground));
 }
 
 /* Selection */
 ::selection {
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 /* Focus Styles */

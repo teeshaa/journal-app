@@ -1,36 +1,37 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Validate environment variables with strict checks
-function validateEnvironmentVariables(): { supabaseUrl: string; supabaseAnonKey: string } {
+// Validate environment variables with graceful fallbacks for development
+function getSupabaseConfig(): { supabaseUrl: string; supabaseAnonKey: string } {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable is required and must be set')
-  }
+  // Provide fallback values for development
+  const fallbackUrl = 'https://placeholder.supabase.co'
+  const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDcxOTg0MzcsImV4cCI6MTk2Mjc3NDQzN30.SqnXPgTiNuFuauek1aBPtMacfC1KCl5cL6QEz5nAWgw'
 
-  if (!supabaseAnonKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable is required and must be set')
+  return {
+    supabaseUrl: supabaseUrl && supabaseUrl !== 'your_supabase_url_here' ? supabaseUrl : fallbackUrl,
+    supabaseAnonKey: supabaseAnonKey && supabaseAnonKey !== 'your_supabase_anon_key_here' ? supabaseAnonKey : fallbackKey
   }
-
-  if (!supabaseUrl.startsWith('https://')) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL must be a valid HTTPS URL')
-  }
-
-  if (supabaseUrl.length < 20) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL appears to be invalid (too short)')
-  }
-
-  if (supabaseAnonKey.length < 100) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be invalid (too short)')
-  }
-
-  return { supabaseUrl, supabaseAnonKey }
 }
 
-const { supabaseUrl, supabaseAnonKey } = validateEnvironmentVariables()
+// Helper function to check if Supabase is properly configured
+export function isSupabaseConfigured(): boolean {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
+  return supabaseUrl !== 'https://placeholder.supabase.co' && 
+         !supabaseAnonKey.includes('placeholder')
+}
+
+const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Helper function to validate configuration before database operations
+export function validateSupabaseConfig(): void {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not properly configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
+  }
+}
 
 // Strict Types for our database tables - no optional fields that should be required
 export interface JournalEntry {

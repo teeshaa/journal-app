@@ -29,6 +29,7 @@ A digital journal app for tech leaders to reflect, grow, and track progress.
    - Fill in:
      - `NEXT_PUBLIC_SUPABASE_URL`
      - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+     - `GROQ_API_KEY`
 3. **Run locally**
    ```bash
    npm run dev
@@ -40,7 +41,10 @@ A digital journal app for tech leaders to reflect, grow, and track progress.
 ## Deployment
 
 - Deployed on Vercel: [https://techleader-journal.vercel.app/](https://techleader-journal.vercel.app/)
-- Add the two env vars above in Vercel project settings.
+- Add the following env vars in Vercel project settings:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `GROQ_API_KEY`
 
 ---
 

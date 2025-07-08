@@ -1,94 +1,250 @@
-import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import '@testing-library/jest-dom'
-import { ThemePicker } from '@/components/ThemePicker'
+import { ThemePicker, type ValidTheme } from '@/components/ThemePicker'
 
-// Mock the API endpoint
+// Mock the auth module
+jest.mock('@/lib/supabase', () => ({
+  auth: {
+    getSession: jest.fn().mockResolvedValue({ session: null, error: null }),
+  }
+}))
+
+// Mock fetch for API calls
 global.fetch = jest.fn()
 
-// Mock framer-motion
-jest.mock('framer-motion', () => ({
-  motion: {
-    div: ({ children, ...props }) => <div {...props}>{children}</div>,
-    button: ({ children, ...props }) => <button {...props}>{children}</button>,
-  },
-  AnimatePresence: ({ children }) => <div>{children}</div>,
+// Mock react-hot-toast
+jest.mock('react-hot-toast', () => ({
+  default: {
+    success: jest.fn(),
+    error: jest.fn(),
+  }
 }))
 
 describe('ThemePicker', () => {
+  const mockOnThemeSelect = jest.fn()
+  const mockOnPromptGenerated = jest.fn()
+
   beforeEach(() => {
-    (fetch as jest.Mock).mockClear()
+    mockOnThemeSelect.mockClear()
+    mockOnPromptGenerated.mockClear()
+    ;(fetch as jest.Mock).mockClear()
   })
 
-  it('renders all five themes', () => {
-    render(<ThemePicker onThemeSelect={() => {}} />)
+  it('renders all theme options with correct titles', () => {
+    render(
+      <ThemePicker 
+        onThemeSelect={mockOnThemeSelect} 
+        onPromptGenerated={mockOnPromptGenerated}
+        selectedTheme={null} 
+      />
+    )
+    
     expect(screen.getByText('Technology Impact')).toBeInTheDocument()
-    expect(screen.getByText('Delivery Impact')).toBeInTheDocument()
+    expect(screen.getByText('Delivery Impact')).toBeInTheDocument() 
     expect(screen.getByText('Business Impact')).toBeInTheDocument()
     expect(screen.getByText('Team Impact')).toBeInTheDocument()
-    expect(screen.getByText('Organizational Impact')).toBeInTheDocument()
+    expect(screen.getByText('Org Impact')).toBeInTheDocument()
   })
 
-  it('calls onThemeSelect and fetches a prompt when a theme is clicked', async () => {
-    const onThemeSelect = jest.fn()
-    const mockPrompt = 'This is a test prompt.'
+  it('renders theme descriptions', () => {
+    render(
+      <ThemePicker 
+        onThemeSelect={mockOnThemeSelect} 
+        onPromptGenerated={mockOnPromptGenerated}
+        selectedTheme={null} 
+      />
+    )
+    
+    expect(screen.getByText(/technical decisions and engineering excellence/)).toBeInTheDocument()
+    expect(screen.getByText(/project delivery and process optimization/)).toBeInTheDocument()
+    expect(screen.getByText(/strategic thinking and business value/)).toBeInTheDocument()
+    expect(screen.getByText(/leadership and team dynamics/)).toBeInTheDocument()
+    expect(screen.getByText(/organizational influence and culture/)).toBeInTheDocument()
+  })
 
+  it('calls onThemeSelect when a theme is clicked', async () => {
+    render(
+      <ThemePicker 
+        onThemeSelect={mockOnThemeSelect} 
+        onPromptGenerated={mockOnPromptGenerated}
+        selectedTheme={null} 
+      />
+    )
+    
+    const technologyTheme = screen.getByText('Technology Impact').closest('button')
+    fireEvent.click(technologyTheme!)
+    
+    expect(mockOnThemeSelect).toHaveBeenCalledWith('technology_impact')
+    expect(mockOnThemeSelect).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows selected state for chosen theme with amber styling', () => {
+    const selectedTheme: ValidTheme = 'technology_impact'
+    render(
+      <ThemePicker 
+        onThemeSelect={mockOnThemeSelect} 
+        onPromptGenerated={mockOnPromptGenerated}
+        selectedTheme={selectedTheme} 
+      />
+    )
+    
+    const selectedButton = screen.getByText('Technology Impact').closest('button')
+    expect(selectedButton).toHaveClass('border-amber-500')
+  })
+
+  it('has proper accessibility attributes', () => {
+    render(
+      <ThemePicker 
+        onThemeSelect={mockOnThemeSelect} 
+        onPromptGenerated={mockOnPromptGenerated}
+        selectedTheme={null} 
+      />
+    )
+    
+    const buttons = screen.getAllByRole('button')
+    // Filter out any other buttons that might be in the component
+    const themeButtons = buttons.filter(button => 
+      button.textContent?.includes('Impact')
+    )
+    
+    themeButtons.forEach(button => {
+      expect(button).toHaveAttribute('type', 'button')
+    })
+  })
+
+  it('generates prompt automatically when theme is selected', async () => {
+    // Mock successful API response
+    const mockResponse = {
+      prompt: 'What technical decision did you make this week?',
+      theme: 'technology_impact',
+      themeTitle: 'Technology Impact'
+    }
     ;(fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ prompt: mockPrompt }),
+      json: jest.fn().mockResolvedValueOnce(mockResponse)
     })
 
-    render(<ThemePicker onThemeSelect={onThemeSelect} />)
+    render(
+      <ThemePicker 
+        onThemeSelect={mockOnThemeSelect} 
+        onPromptGenerated={mockOnPromptGenerated}
+        selectedTheme={null} 
+      />
+    )
+    
+    const technologyTheme = screen.getByText('Technology Impact').closest('button')
+    fireEvent.click(technologyTheme!)
+    
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/generate-prompt', expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: 'technology_impact' })
+      }))
+    })
+  })
 
-    fireEvent.click(screen.getByText('Technology Impact'))
+  it('handles API errors gracefully', async () => {
+    // Mock failed API response
+    ;(fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: jest.fn().mockResolvedValueOnce({ error: 'Server error' })
+    })
 
-    // Shows loading state
+    render(
+      <ThemePicker 
+        onThemeSelect={mockOnThemeSelect} 
+        onPromptGenerated={mockOnPromptGenerated}
+        selectedTheme={null} 
+      />
+    )
+    
+    const technologyTheme = screen.getByText('Technology Impact').closest('button')
+    fireEvent.click(technologyTheme!)
+    
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalled()
+    })
+    
+    // Should still call onThemeSelect even if prompt generation fails
+    expect(mockOnThemeSelect).toHaveBeenCalledWith('technology_impact')
+  })
+
+  it('handles all valid themes', () => {
+    const validThemes: ValidTheme[] = [
+      'technology_impact',
+      'delivery_impact', 
+      'business_impact',
+      'team_impact',
+      'org_impact'
+    ]
+
+    validThemes.forEach(theme => {
+      const { unmount } = render(
+        <ThemePicker 
+          onThemeSelect={mockOnThemeSelect} 
+          onPromptGenerated={mockOnPromptGenerated}
+          selectedTheme={theme} 
+        />
+      )
+      
+      const selectedButton = screen.getByText(new RegExp(theme.replace('_', ' '), 'i')).closest('button')
+      expect(selectedButton).toHaveClass('border-amber-500')
+      
+      unmount()
+    })
+  })
+
+  it('shows loading state during prompt generation', async () => {
+    // Mock delayed API response
+    let resolvePromise: (value: any) => void
+    const delayedPromise = new Promise(resolve => {
+      resolvePromise = resolve
+    })
+    
+    ;(fetch as jest.Mock).mockReturnValueOnce(delayedPromise)
+
+    render(
+      <ThemePicker 
+        onThemeSelect={mockOnThemeSelect} 
+        onPromptGenerated={mockOnPromptGenerated}
+        selectedTheme={null} 
+      />
+    )
+    
+    const technologyTheme = screen.getByText('Technology Impact').closest('button')
+    fireEvent.click(technologyTheme!)
+    
+    // Should show loading indicator
     await waitFor(() => {
       expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
     })
-
-    // Calls onThemeSelect with the theme and prompt
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/generate-prompt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ theme: 'technology_impact' }),
+    
+    // Resolve the promise
+    resolvePromise!({
+      ok: true,
+      json: jest.fn().mockResolvedValueOnce({
+        prompt: 'Test prompt',
+        theme: 'technology_impact'
       })
-      expect(onThemeSelect).toHaveBeenCalledWith('technology_impact', mockPrompt)
-    })
-  })
-
-  it('handles API error when fetching prompt fails', async () => {
-    const onThemeSelect = jest.fn()
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
-
-    ;(fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-    })
-
-    render(<ThemePicker onThemeSelect={onThemeSelect} />)
-
-    fireEvent.click(screen.getByText('Team Impact'))
-
-    await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to generate prompt for:', 'team_impact')
     })
     
-    // onThemeSelect should still be called, but without a prompt
-    expect(onThemeSelect).toHaveBeenCalledWith('team_impact', '')
-    consoleErrorSpy.mockRestore()
+    // Loading should disappear
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument()
+    })
   })
 
-  it('applies selected styles to the clicked theme', async () => {
-    render(<ThemePicker onThemeSelect={() => {}} />)
-    const themeButton = screen.getByText('Business Impact').closest('button')
-
-    fireEvent.click(themeButton!)
-
-    await waitFor(() => {
-      expect(themeButton).toHaveClass('border-amber-500')
-    })
+  it('renders in 2-column grid layout', () => {
+    render(
+      <ThemePicker 
+        onThemeSelect={mockOnThemeSelect} 
+        onPromptGenerated={mockOnPromptGenerated}
+        selectedTheme={null} 
+      />
+    )
+    
+    const gridContainer = screen.getByTestId('theme-grid')
+    expect(gridContainer).toHaveClass('grid-cols-2')
   })
 }) 

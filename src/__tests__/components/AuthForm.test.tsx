@@ -12,80 +12,189 @@ jest.mock('react-hot-toast', () => ({
 // Mock the auth module
 jest.mock('@/lib/supabase', () => ({
   auth: {
-    signInWithMagicLink: jest.fn(),
-    signInWithOtp: jest.fn(),
-    signUpWithOtp: jest.fn(),
+    signInWithMagicLink: jest.fn()
   }
 }))
-
-// Mock framer-motion
-jest.mock('framer-motion', () => ({
-    motion: {
-      div: ({ children }: { children: any }) => <div>{children}</div>,
-      button: ({ children, onClick, disabled }: { children: any, onClick: any, disabled: any }) => <button onClick={onClick} disabled={disabled}>{children}</button>,
-    },
-    AnimatePresence: ({ children }: { children: any }) => <div>{children}</div>,
-}));
 
 describe('AuthForm', () => {
   const { auth } = require('@/lib/supabase')
   const toast = require('react-hot-toast').default
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
 
-  it('renders the sign-in form by default', () => {
-    render(<AuthForm />);
-    expect(screen.getByText('Join the community of forward-thinking leaders')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('your-email@example.com')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Send Magic Link' })).toBeInTheDocument();
-  });
-
-  it('switches to sign-up view when "Create one" is clicked', () => {
-    render(<AuthForm />);
-    fireEvent.click(screen.getByText('Create one'));
-    expect(screen.getByText('Get started with your leadership journal')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('your-email@example.com')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sign Up & Get Magic Link' })).toBeInTheDocument();
-  });
-
-  it('calls the signInWithOtp function on sign-in', async () => {
-    (auth.signInWithOtp as jest.Mock).mockResolvedValue({ error: null });
-    render(<AuthForm />);
+  it('renders the initial form correctly', () => {
+    render(<AuthForm />)
     
-    fireEvent.change(screen.getByPlaceholderText('your-email@example.com'), { target: { value: 'test@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send Magic Link' }));
+    expect(screen.getByText('Welcome to Next Iteration')).toBeInTheDocument()
+    expect(screen.getByText('Sign in with your email to begin your leadership growth journey')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Enter your email address')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /continue with email/i })).toBeInTheDocument()
+  })
 
+  it('validates email input correctly', async () => {
+    render(<AuthForm />)
+    
+    const submitButton = screen.getByRole('button', { name: /continue with email/i })
+    
+    // Test empty email
+    fireEvent.click(submitButton)
+    
     await waitFor(() => {
-      expect(auth.signInWithOtp).toHaveBeenCalledWith('test@example.com');
-      expect(toast.success).toHaveBeenCalledWith('Magic link sent! Check your email to sign in.', expect.any(Object));
-    });
-  });
+      expect(toast.error).toHaveBeenCalledWith('Please enter your email address')
+    })
 
-  it('calls the signUpWithOtp function on sign-up', async () => {
-    (auth.signUpWithOtp as jest.Mock).mockResolvedValue({ error: null });
-    render(<AuthForm />);
-    fireEvent.click(screen.getByText('Create one'));
-
-    fireEvent.change(screen.getByPlaceholderText('your-email@example.com'), { target: { value: 'new-user@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Sign Up & Get Magic Link' }));
-
+    // Test invalid email
+    const emailInput = screen.getByPlaceholderText('Enter your email address')
+    fireEvent.change(emailInput, { target: { value: 'invalid-email' } })
+    fireEvent.click(submitButton)
+    
     await waitFor(() => {
-      expect(auth.signUpWithOtp).toHaveBeenCalledWith('new-user@example.com');
-      expect(toast.success).toHaveBeenCalledWith('Welcome! Check your email for the magic link to get started.', expect.any(Object));
-    });
-  });
+      expect(toast.error).toHaveBeenCalledWith('Please enter a valid email address')
+    })
+  })
 
-  it('shows an error toast if sign-in fails', async () => {
-    (auth.signInWithOtp as jest.Mock).mockResolvedValue({ error: { message: 'Invalid email' } });
-    render(<AuthForm />);
-
-    fireEvent.change(screen.getByPlaceholderText('your-email@example.com'), { target: { value: 'invalid@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send Magic Link' }));
-
+  it('sends magic link successfully', async () => {
+    auth.signInWithMagicLink.mockResolvedValue({ error: null })
+    
+    render(<AuthForm />)
+    
+    const emailInput = screen.getByPlaceholderText('Enter your email address')
+    const submitButton = screen.getByRole('button', { name: /continue with email/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.click(submitButton)
+    
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Failed to send magic link: Invalid email', expect.any(Object));
-    });
-  });
+      expect(auth.signInWithMagicLink).toHaveBeenCalledWith('test@example.com')
+      expect(toast.success).toHaveBeenCalledWith('🎉 Magic link sent! Check your email', expect.any(Object))
+    })
+  })
+
+  it('handles authentication errors gracefully', async () => {
+    const errorMessage = 'Authentication failed'
+    auth.signInWithMagicLink.mockRejectedValue(new Error(errorMessage))
+    
+    render(<AuthForm />)
+    
+    const emailInput = screen.getByPlaceholderText('Enter your email address')
+    const submitButton = screen.getByRole('button', { name: /continue with email/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.click(submitButton)
+    
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(errorMessage)
+    })
+  })
+
+  it('shows success state after sending magic link', async () => {
+    auth.signInWithMagicLink.mockResolvedValue({ error: null })
+    
+    render(<AuthForm />)
+    
+    const emailInput = screen.getByPlaceholderText('Enter your email address')
+    const submitButton = screen.getByRole('button', { name: /continue with email/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.click(submitButton)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Check your email!')).toBeInTheDocument()
+      expect(screen.getByText('test@example.com')).toBeInTheDocument()
+      expect(screen.getByText(/We've sent a magic link to/)).toBeInTheDocument()
+    })
+  })
+
+  it('allows user to use different email from success state', async () => {
+    auth.signInWithMagicLink.mockResolvedValue({ error: null })
+    
+    render(<AuthForm />)
+    
+    const emailInput = screen.getByPlaceholderText('Enter your email address')
+    const submitButton = screen.getByRole('button', { name: /continue with email/i })
+    
+    // Send initial magic link
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.click(submitButton)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Check your email!')).toBeInTheDocument()
+    })
+    
+    // Click "Use a different email"
+    const differentEmailButton = screen.getByText('Use a different email')
+    fireEvent.click(differentEmailButton)
+    
+    // Should return to form
+    expect(screen.getByText('Welcome to Next Iteration')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Enter your email address')).toBeInTheDocument()
+  })
+
+  it('shows loading state during submission', async () => {
+    // Mock delayed response
+    auth.signInWithMagicLink.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+    
+    render(<AuthForm />)
+    
+    const emailInput = screen.getByPlaceholderText('Enter your email address')
+    const submitButton = screen.getByRole('button', { name: /continue with email/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.click(submitButton)
+    
+    // Should show loading state
+    expect(screen.getByRole('button', { name: /sending.../i })).toBeInTheDocument()
+    expect(submitButton).toBeDisabled()
+  })
+
+  it('handles network errors appropriately', async () => {
+    // Mock network error
+    auth.signInWithMagicLink.mockRejectedValue(new Error('Network error'))
+    
+    render(<AuthForm />)
+    
+    const emailInput = screen.getByPlaceholderText('Enter your email address')
+    const submitButton = screen.getByRole('button', { name: /continue with email/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.click(submitButton)
+    
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Network error')
+    })
+  })
+
+  it('maintains accessibility standards', () => {
+    render(<AuthForm />)
+    
+    const emailInput = screen.getByPlaceholderText('Enter your email address')
+    const submitButton = screen.getByRole('button', { name: /continue with email/i })
+    
+    expect(emailInput).toHaveAttribute('type', 'email')
+    expect(emailInput).toHaveAttribute('required')
+    expect(submitButton).toHaveAttribute('type', 'submit')
+  })
+
+  it('prevents multiple submissions', async () => {
+    auth.signInWithMagicLink.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+    
+    render(<AuthForm />)
+    
+    const emailInput = screen.getByPlaceholderText('Enter your email address')
+    const submitButton = screen.getByRole('button', { name: /continue with email/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    
+    // Click multiple times rapidly
+    fireEvent.click(submitButton)
+    fireEvent.click(submitButton)
+    fireEvent.click(submitButton)
+    
+    // Should only call API once
+    await waitFor(() => {
+      expect(auth.signInWithMagicLink).toHaveBeenCalledTimes(1)
+    })
+  })
 }) 

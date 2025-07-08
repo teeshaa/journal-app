@@ -1,13 +1,4 @@
-import { createClient, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
-import { isSameDay, startOfWeek, differenceInDays, startOfDay } from 'date-fns';
-
-export const getMotivationalMessage = (streak: number): string => {
-    if (streak === 0) return 'Start your reflection journey! ✨';
-    if (streak === 1) return 'Great start! One day at a time 💪';
-    if (streak < 7) return `Building momentum: ${streak} days! 🔥`;
-    if (streak < 30) return `Incredible! ${streak} days of insights 🧠`;
-    return `Over a month of consistency! 🚀`;
-};
+import { createClient } from '@supabase/supabase-js'
 
 // Database Types
 export interface User {
@@ -47,61 +38,6 @@ export interface CreateJournalEntry {
   word_count: number
   tags: string[]
 }
-
-export interface StreakData {
-  currentStreak: number;
-  longestStreak: number;
-  totalEntries: number;
-  entriesThisWeek: number;
-  activity: Record<string, number>;
-}
-
-export const calculateStreak = (entries: { created_at: string }[]): { currentStreak: number, longestStreak: number } => {
-  if (!entries || entries.length === 0) {
-    return { currentStreak: 0, longestStreak: 0 };
-  }
-
-  const dates = entries.map(e => startOfDay(new Date(e.created_at))).sort((a, b) => a.getTime() - b.getTime());
-  
-  let currentStreak = 0;
-  let longestStreak = 0;
-
-  if (dates.length > 0) {
-    const today = startOfDay(new Date());
-    const yesterday = startOfDay(new Date(today.getTime() - 86400000));
-    
-    let lastEntryDate = dates[dates.length - 1];
-    
-    if (isSameDay(lastEntryDate, today) || isSameDay(lastEntryDate, yesterday)) {
-      currentStreak = 1;
-      longestStreak = 1;
-      let lastDate = lastEntryDate;
-
-      for (let i = dates.length - 2; i >= 0; i--) {
-        let currentDate = dates[i];
-        if (differenceInDays(lastDate, currentDate) === 1) {
-          currentStreak++;
-        } else if (differenceInDays(lastDate, currentDate) > 1) {
-          longestStreak = Math.max(longestStreak, currentStreak);
-          currentStreak = 1;
-        }
-        lastDate = currentDate;
-      }
-      longestStreak = Math.max(longestStreak, currentStreak);
-    }
-  }
-
-  return { currentStreak, longestStreak };
-};
-
-export const groupEntriesByDate = (entries: { created_at: string }[]): Record<string, number> => {
-  if (!entries) return {};
-  return entries.reduce((acc, entry) => {
-    const date = startOfDay(new Date(entry.created_at)).toISOString().split('T')[0];
-    acc[date] = (acc[date] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-};
 
 // Validate environment variables with graceful fallbacks for development
 function getSupabaseConfig(): { supabaseUrl: string; supabaseAnonKey: string } {
@@ -410,55 +346,6 @@ export const journalService = {
     } catch (error) {
       console.error('Error getting entries:', error)
       return { data: null, error }
-    }
-  },
-
-  getStreakData: async (): Promise<StreakData> => {
-    const session = await auth.getUser();
-    
-    if (!session || !session.user) {
-      return {
-        currentStreak: 0,
-        longestStreak: 0,
-        totalEntries: 0,
-        entriesThisWeek: 0,
-        activity: {},
-      }
-    }
-
-    const { data: entries, error } = await supabase
-      .from('journal_entries')
-      .select('created_at')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching streak data:', error)
-      throw new Error(error.message)
-    }
-
-    if (!entries || entries.length === 0) {
-      return {
-        currentStreak: 0,
-        longestStreak: 0,
-        totalEntries: 0,
-        entriesThisWeek: 0,
-        activity: {},
-      }
-    }
-
-    const streakResult = calculateStreak(entries);
-    const activity = groupEntriesByDate(entries);
-    
-    const entriesThisWeek = entries.filter(entry => 
-        (new Date(entry.created_at) >= startOfWeek(new Date()))
-    ).length;
-
-    return {
-      ...streakResult,
-      totalEntries: entries.length,
-      entriesThisWeek,
-      activity,
     }
   },
 

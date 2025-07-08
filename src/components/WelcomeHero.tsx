@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import type { User } from '@/lib/supabase'
-import { getUserDisplayName } from '@/lib/utils'
 
 interface WelcomeHeroProps {
   user: User
@@ -13,7 +12,7 @@ export function WelcomeHero({ user }: WelcomeHeroProps) {
   const currentHour = new Date().getHours()
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening'
   
-  const firstName = getUserDisplayName(user).split(' ')[0]
+  const firstName = user.full_name?.split(' ')[0] || user.email.split('@')[0]
 
   return (
     <motion.div

@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import { BookOpen, LogOut, User as UserIcon, Home, FileText } from 'lucide-react'
 import { auth } from '@/lib/supabase'
-import { getUserDisplayName } from '@/lib/utils'
 
 interface User {
   id: string
@@ -120,7 +119,7 @@ export function HeaderSimple({ user, activeView = 'home', onViewChange }: Header
                     <UserIcon className="w-4 h-4 text-white" />
                   </div>
                   <span className="text-sm font-medium hidden sm:block">
-                    {getUserDisplayName(user)}
+                    {user.user_metadata?.full_name || user.email}
                   </span>
                 </div>
                 

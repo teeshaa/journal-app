@@ -12,7 +12,6 @@ import {
   ArrowRight
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import toast from 'react-hot-toast'
 
 export const VALID_THEMES = [
   'technology_impact',
@@ -85,72 +84,10 @@ interface ThemePickerProps {
 export function ThemePicker({ onThemeSelect, selectedTheme }: ThemePickerProps) {
   const router = useRouter()
 
-  const handleThemeSelect = async (theme: ValidTheme): Promise<void> => {
+  const handleThemeSelect = (theme: ValidTheme): void => {
     onThemeSelect(theme)
-    
-    // Show loading state
-    const loadingToast = toast.loading('🔮 Generating your personalized prompt...', {
-      position: 'top-right',
-      style: {
-        background: '#fef3c7',
-        color: '#d97706',
-        border: '1px solid #fed7aa',
-        borderRadius: '8px',
-        fontWeight: '500',
-      },
-    })
-
-    try {
-      // Make LLM call to generate prompt
-      const response = await fetch('/api/generate-prompt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ theme })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate prompt')
-      }
-
-      const data = await response.json()
-      
-      // Dismiss loading toast
-      toast.dismiss(loadingToast)
-      
-      if (data.prompt) {
-        toast.success('✨ Your reflection prompt is ready!', {
-          position: 'top-right',
-          style: {
-            background: '#dcfce7',
-            color: '#166534',
-            border: '1px solid #bbf7d0',
-            borderRadius: '8px',
-            fontWeight: '500',
-          },
-        })
-        
-        // Redirect to theme page with prompt
-        router.push(`/${theme}?prompt=${encodeURIComponent(data.prompt)}`)
-      } else {
-        throw new Error('No prompt received')
-      }
-      
-    } catch (error) {
-      toast.dismiss(loadingToast)
-      toast.error('Failed to generate prompt. Please try again.', {
-        position: 'top-right',
-        style: {
-          background: '#fee2e2',
-          color: '#dc2626',
-          border: '1px solid #fecaca',
-          borderRadius: '8px',
-          fontWeight: '500',
-        },
-      })
-      console.error('Error generating prompt:', error)
-    }
+    // Immediately redirect to the write page for this theme
+    router.push(`/write/${theme}`)
   }
 
   return (

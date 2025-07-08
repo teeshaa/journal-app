@@ -11,7 +11,7 @@ import {
   startOfYear,
   getDay
 } from 'date-fns'
-import { getMotivationalMessage } from '@/lib/utils'
+import { getMotivationalMessage } from '@/lib/supabase'
 
 interface DayData {
   date: Date

@@ -18,6 +18,21 @@ interface HeaderSimpleProps {
   onViewChange?: (view: 'home' | 'entries') => void
 }
 
+function getDisplayName(user?: User | null): string {
+  if (!user) return ''
+  if (user.user_metadata?.full_name && user.user_metadata.full_name.trim()) {
+    return user.user_metadata.full_name
+  }
+  if (user.email) {
+    // Extract part before @, replace . _ - with space, capitalize words
+    const base = user.email.split('@')[0]
+    return base
+      .replace(/[._-]+/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+  }
+  return ''
+}
+
 export function HeaderSimple({ user, activeView = 'home', onViewChange }: HeaderSimpleProps) {
   const handleSignOut = async () => {
     try {
@@ -26,6 +41,8 @@ export function HeaderSimple({ user, activeView = 'home', onViewChange }: Header
       console.error('Error signing out:', error)
     }
   }
+
+  const displayName = getDisplayName(user)
 
   return (
     <header className="sticky top-0 z-50 border-b border-amber-200/40 backdrop-blur-xl bg-gradient-to-r from-amber-50/90 to-orange-50/90 shadow-sm">
@@ -119,7 +136,7 @@ export function HeaderSimple({ user, activeView = 'home', onViewChange }: Header
                     <UserIcon className="w-4 h-4 text-white" />
                   </div>
                   <span className="text-sm font-medium hidden sm:block">
-                    {user.user_metadata?.full_name || user.email}
+                    {displayName}
                   </span>
                 </div>
                 

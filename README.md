@@ -1,65 +1,74 @@
-# Digital Journal for Tech Leaders
+# Tech Leader Journal
 
-A web-based journal app designed for engineering leaders who want to grow through regular reflection.
+A digital journal app for tech leaders to reflect, grow, and track progress.
+
+**Live App:** [https://techleader-journal.vercel.app/](https://techleader-journal.vercel.app/)
 
 ---
 
-## ✨ Features
+## Features
 
-1. **Theme Picker** – choose among Technology, Delivery, Business, Team & Organisational Impact.
-2. **Dynamic Prompt Generator** – AI-generated reflection prompt per theme.
-3. **Rich Editor**
-   • block-based editor (headings, lists, quotes, todos)
-   • markdown export
-   • image upload (Supabase Storage)
-4. **Past Entries View** – chronological feed with markdown render & image light-box.
-5. **Streak Tracker** – contribution heat-map, current/longest streak, weekly & total counts.
-6. **Bookmarks & Tags** – quick access to flagged reflections & auto-extracted tags.
-7. **Auth** – password-less magic-link via Supabase.
+- **Theme Picker:** Choose from Technology, Delivery, Business, Team, Org Impact
+- **Dynamic Prompts:** AI-generated reflection prompts per theme
+- **Rich Editor:** Headings, lists, markdown, image upload
+- **Past Entries:** Chronological feed with markdown and image lightbox
+- **Streak Tracker:** Contribution heatmap, streak stats
+- **Bookmarks & Tags:** Flag entries, auto-extracted tags
+- **Auth:** Passwordless magic-link via Supabase
 
-## 🏗️  Stack
+---
 
-| Layer | Tech |
-|-------|------|
-| Frontend | Next.js 14 / React 18 / TypeScript / TailwindCSS |
-| State | React Server Components + `use client` islands |
-| Backend-as-a-Service | Supabase (PostgreSQL, Auth, Storage) |
-| AI | Simple prompt template (can be swapped for OpenAI / Anthropic) |
+## Quick Start
 
-## 🚀  Quick-Start
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+2. **Configure environment**
+   - Copy `.env.example` to `.env.local`
+   - Fill in:
+     - `NEXT_PUBLIC_SUPABASE_URL`
+     - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. **Run locally**
+   ```bash
+   npm run dev
+   # App runs at http://localhost:3000
+   ```
 
-```bash
-# 1. Install dependencies
-npm install             # or yarn
+---
 
-# 2. Configure environment
-cp .env.example .env.local
-#   fill NEXT_PUBLIC_SUPABASE_URL & NEXT_PUBLIC_SUPABASE_ANON_KEY
+## Deployment
 
-# 3. Run development server
-npm run dev             # http://localhost:3000
-```
+- Deployed on Vercel: [https://techleader-journal.vercel.app/](https://techleader-journal.vercel.app/)
+- Add the two env vars above in Vercel project settings.
 
-### Required environment variables
+---
 
-| Key | Description |
-|-----|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+## Tech Stack
 
-## 🐳  Deployment (Vercel)
+- Next.js 14, React 18, TypeScript, TailwindCSS
+- Supabase (PostgreSQL, Auth, Storage)
+- Groq Inference - With Llama 3.3 70b
 
-1. Push the repo to GitHub.
-2. Create a new Vercel project → “Import Git Repository”.
-3. Add the two env vars above in *Project → Settings → Environment Variables*.
-4. Click *Deploy* – Vercel handles build & SSR automatically.
+---
 
-## 🗂️  Scripts
+## Scripts
 
-```
-npm run dev     # dev server
-npm run build   # production build (Next.js)
-npm start       # serve build locally
-```
+- `npm run dev` – Start dev server
+- `npm run build` – Production build
+- `npm start` – Serve build locally
 
-> **Note:** automated unit tests were removed to streamline the pilot deployment. The production code is typed, linted and compiles cleanly.
+---
+
+## Auth & Data
+
+- Passwordless login via Supabase magic link
+- Entries, tags, and images stored in Supabase
+
+---
+
+## History
+
+- View and manage all past entries in a chronological feed
+
+---

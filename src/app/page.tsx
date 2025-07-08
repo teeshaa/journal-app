@@ -1,81 +1,183 @@
 'use client'
 
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Header } from '@/components/Header'
-import { ThemePicker } from '@/components/ThemePicker'
-import { JournalEditor } from '@/components/JournalEditor'
-import { EntriesView } from '@/components/EntriesView'
-import { StreakWidget } from '@/components/StreakWidget'
-import { QuickStats } from '@/components/QuickStats'
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { auth, userService } from '@/lib/supabase'
+import type { User } from '@/lib/supabase'
+import { HeaderSimple } from '@/components/HeaderSimple'
+import { ThemePicker, type ValidTheme } from '@/components/ThemePicker'
 import { WelcomeHero } from '@/components/WelcomeHero'
-import type { ValidTheme } from '@/components/ThemePicker'
+import { StreakWidget } from '@/components/StreakWidget'
+import { EntriesView } from '@/components/EntriesView'
+import { AuthForm } from '@/components/AuthForm'
+import { Toaster } from 'react-hot-toast'
 
-export default function Home() {
+export default function HomePage() {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [activeView, setActiveView] = useState<'home' | 'entries'>('home')
   const [selectedTheme, setSelectedTheme] = useState<ValidTheme | null>(null)
-  const [activeView, setActiveView] = useState<'write' | 'entries'>('write')
 
-  const handleThemeSelect = (theme: ValidTheme): void => {
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { session, error } = await auth.getSession()
+        
+        if (error) {
+          console.error('Auth error:', error)
+          setUser(null)
+        } else if (session?.user) {
+          // Get full user profile with stats
+          const { data: profile, error: profileError } = await userService.getProfile()
+          if (profileError) {
+            console.error('Profile error:', profileError)
+            setUser(null)
+          } else if (profile) {
+            setUser(profile)
+          }
+        } else {
+          setUser(null)
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    checkAuth()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Get full user profile with stats
+        const { data: profile, error: profileError } = await userService.getProfile()
+        if (profileError) {
+          console.error('Profile error:', profileError)
+          setUser(null)
+        } else if (profile) {
+          setUser(profile)
+        }
+        setLoading(false)
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setSelectedTheme(null)
+        setActiveView('home')
+        setLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleThemeSelect = (theme: ValidTheme) => {
+    if (!theme) return
     setSelectedTheme(theme)
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-pink-50/20">
-      <Header activeView={activeView} onViewChange={setActiveView} />
-      
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="space-y-8"
-        >
-          {/* Hero Section */}
-          <WelcomeHero />
+  const handleViewChange = (view: 'home' | 'entries') => {
+    setActiveView(view)
+    // Reset theme selection when switching views
+    if (view === 'entries') {
+      setSelectedTheme(null)
+    }
+  }
 
-          {/* Quick Stats Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StreakWidget />
-            <QuickStats />
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+        <HeaderSimple user={null} />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
           </div>
+        </div>
+      </div>
+    )
+  }
 
-          <AnimatePresence mode="wait">
-            {activeView === 'write' ? (
-              <motion.div
-                key="write"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
-                className="grid lg:grid-cols-3 gap-8"
-              >
-                {/* Left Sidebar - Theme Selection */}
-                <div className="lg:col-span-1 space-y-6">
-                  <ThemePicker 
-                    onThemeSelect={handleThemeSelect}
-                    selectedTheme={selectedTheme}
-                  />
-                </div>
+  // Show auth form if user is not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+        <Toaster />
+        <HeaderSimple user={null} />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-md mx-auto">
+            <AuthForm />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-                {/* Main Content - Journal Editor */}
-                <div className="lg:col-span-2">
-                  <JournalEditor selectedTheme={selectedTheme} />
-                </div>
-              </motion.div>
-            ) : (
+  // Main authenticated user interface
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+      <Toaster />
+      <HeaderSimple 
+        user={user} 
+        activeView={activeView}
+        onViewChange={handleViewChange}
+      />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Main Content Area */}
+            <div className="lg:col-span-3 space-y-8">
+              {activeView === 'home' ? (
+                <>
+                  {/* Welcome Section */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <WelcomeHero user={user} />
+                  </motion.div>
+                  
+                  {/* Theme Selection */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <ThemePicker
+                      onThemeSelect={handleThemeSelect}
+                      selectedTheme={selectedTheme}
+                    />
+                  </motion.div>
+                </>
+              ) : (
+                /* Entries View */
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <EntriesView />
+                </motion.div>
+              )}
+            </div>
+
+            {/* Sidebar - Always visible */}
+            <div className="lg:col-span-1 space-y-6">
               <motion.div
-                key="entries"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
+                transition={{ delay: 0.3 }}
               >
-                <EntriesView />
+                <StreakWidget />
               </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      </main>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
+

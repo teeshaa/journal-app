@@ -2,18 +2,27 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Code, Truck, Building, Users, Globe, Sparkles, Check } from 'lucide-react'
+import { 
+  Code2, 
+  Truck, 
+  Building2, 
+  Users, 
+  Globe, 
+  CheckCircle2,
+  ArrowRight
+} from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 
-// Valid themes - no defaults
-const VALID_THEMES = [
+export const VALID_THEMES = [
   'technology_impact',
-  'delivery_impact',
-  'business_impact', 
+  'delivery_impact', 
+  'business_impact',
   'team_impact',
   'org_impact'
 ] as const
 
-type ValidTheme = typeof VALID_THEMES[number]
+export type ValidTheme = typeof VALID_THEMES[number]
 
 interface ThemeConfig {
   id: ValidTheme
@@ -22,202 +31,244 @@ interface ThemeConfig {
   icon: React.ComponentType<{ className?: string }>
   gradient: string
   color: string
-  lightColor: string
 }
 
-const themes: ReadonlyArray<ThemeConfig> = [
+const THEMES: ThemeConfig[] = [
   {
     id: 'technology_impact',
     title: 'Technology Impact',
-    description: 'Reflect on technical decisions and engineering excellence',
-    icon: Code,
-    gradient: 'from-blue-500 to-blue-600',
-    color: 'rgb(59, 130, 246)',
-    lightColor: 'rgb(219, 234, 254)',
+    description: 'Reflect on technical decisions, architecture choices, and engineering excellence that shape your products',
+    icon: Code2,
+    gradient: 'from-blue-500 to-cyan-500',
+    color: 'border-blue-200 hover:border-blue-300'
   },
   {
     id: 'delivery_impact',
     title: 'Delivery Impact',
-    description: 'Consider project delivery and process improvements',
+    description: 'Explore project delivery strategies, process improvements, and execution that drives results',
     icon: Truck,
-    gradient: 'from-green-500 to-green-600',
-    color: 'rgb(34, 197, 94)',
-    lightColor: 'rgb(220, 252, 231)',
+    gradient: 'from-emerald-500 to-teal-500',
+    color: 'border-emerald-200 hover:border-emerald-300'
   },
   {
     id: 'business_impact',
     title: 'Business Impact',
-    description: 'Explore strategic thinking and business value',
-    icon: Building,
-    gradient: 'from-purple-500 to-purple-600',
-    color: 'rgb(168, 85, 247)',
-    lightColor: 'rgb(243, 232, 255)',
+    description: 'Examine strategic thinking, business value creation, and decisions that move the needle',
+    icon: Building2,
+    gradient: 'from-orange-500 to-red-500',
+    color: 'border-orange-200 hover:border-orange-300'
   },
   {
     id: 'team_impact',
     title: 'Team Impact',
-    description: 'Focus on leadership and team dynamics',
+    description: 'Dive into leadership moments, team dynamics, and how you influence and inspire others',
     icon: Users,
-    gradient: 'from-orange-500 to-orange-600',
-    color: 'rgb(249, 115, 22)',
-    lightColor: 'rgb(255, 237, 213)',
+    gradient: 'from-purple-500 to-pink-500',
+    color: 'border-purple-200 hover:border-purple-300'
   },
   {
     id: 'org_impact',
-    title: 'Org Impact',
-    description: 'Think about organizational influence and culture',
+    title: 'Organizational Impact',
+    description: 'Consider your broader influence on culture, processes, and organizational transformation',
     icon: Globe,
-    gradient: 'from-teal-500 to-teal-600',
-    color: 'rgb(20, 184, 166)',
-    lightColor: 'rgb(204, 251, 241)',
-  },
-] as const
+    gradient: 'from-teal-500 to-blue-500',
+    color: 'border-teal-200 hover:border-teal-300'
+  }
+]
 
-// Strict interface - no optional props with defaults
 interface ThemePickerProps {
   onThemeSelect: (theme: ValidTheme) => void
+  onPromptGenerated?: (prompt: string) => void
   selectedTheme: ValidTheme | null
 }
 
-// Validate theme selection
-function validateTheme(theme: string): ValidTheme {
-  if (!VALID_THEMES.includes(theme as ValidTheme)) {
-    throw new Error(`Invalid theme selection: ${theme}`)
-  }
-  return theme as ValidTheme
-}
-
-// Find theme configuration
-function findThemeConfig(themeId: ValidTheme): ThemeConfig {
-  const theme = themes.find(t => t.id === themeId)
-  if (!theme) {
-    throw new Error(`Theme configuration not found for: ${themeId}`)
-  }
-  return theme
-}
-
 export function ThemePicker({ onThemeSelect, selectedTheme }: ThemePickerProps) {
-  const [hoveredTheme, setHoveredTheme] = useState<ValidTheme | null>(null)
+  const router = useRouter()
 
-  const handleThemeSelect = (themeId: ValidTheme): void => {
-    onThemeSelect(themeId)
+  const handleThemeSelect = async (theme: ValidTheme): Promise<void> => {
+    onThemeSelect(theme)
+    
+    // Show loading state
+    const loadingToast = toast.loading('🔮 Generating your personalized prompt...', {
+      position: 'top-right',
+      style: {
+        background: '#fef3c7',
+        color: '#d97706',
+        border: '1px solid #fed7aa',
+        borderRadius: '8px',
+        fontWeight: '500',
+      },
+    })
+
+    try {
+      // Make LLM call to generate prompt
+      const response = await fetch('/api/generate-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ theme })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate prompt')
+      }
+
+      const data = await response.json()
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast)
+      
+      if (data.prompt) {
+        toast.success('✨ Your reflection prompt is ready!', {
+          position: 'top-right',
+          style: {
+            background: '#dcfce7',
+            color: '#166534',
+            border: '1px solid #bbf7d0',
+            borderRadius: '8px',
+            fontWeight: '500',
+          },
+        })
+        
+        // Redirect to theme page with prompt
+        router.push(`/${theme}?prompt=${encodeURIComponent(data.prompt)}`)
+      } else {
+        throw new Error('No prompt received')
+      }
+      
+    } catch (error) {
+      toast.dismiss(loadingToast)
+      toast.error('Failed to generate prompt. Please try again.', {
+        position: 'top-right',
+        style: {
+          background: '#fee2e2',
+          color: '#dc2626',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          fontWeight: '500',
+        },
+      })
+      console.error('Error generating prompt:', error)
+    }
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="heading-2 font-bold mb-2">Choose Your Focus</h2>
-        <p className="text-muted-foreground">Select a reflection theme to guide your thoughts</p>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-6"
+    >
+      {/* Header */}
+      <div className="text-center space-y-3">
+        <motion.h2 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-2xl font-bold text-slate-900"
+        >
+          Choose your reflection focus
+        </motion.h2>
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-slate-600 max-w-lg mx-auto"
+        >
+          Select a leadership dimension to explore. Each theme offers unique prompts designed to unlock deeper insights about your growth journey.
+        </motion.p>
       </div>
-      
-      <div className="grid gap-3">
-        <AnimatePresence>
-          {themes.map((theme, index) => {
-            const Icon = theme.icon
-            const isSelected = selectedTheme === theme.id
-            const isHovered = hoveredTheme === theme.id
-            
-            return (
-              <motion.button
-                key={theme.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                onClick={() => handleThemeSelect(theme.id)}
-                onMouseEnter={() => setHoveredTheme(theme.id)}
-                onMouseLeave={() => setHoveredTheme(null)}
-                className={`
-                  relative group w-full text-left p-5 rounded-2xl transition-all duration-300
-                  ${isSelected 
-                    ? 'bg-card shadow-lg ring-2 ring-primary ring-offset-2 ring-offset-background' 
-                    : 'bg-card hover:shadow-md'
-                  }
-                `}
-                type="button"
-                aria-pressed={isSelected}
-                aria-describedby={`theme-${theme.id}-description`}
-              >
-                <div className="flex items-start space-x-4">
+
+      {/* Theme Grid - 2 columns for cleaner layout */}
+      <div className="grid grid-cols-2 gap-4" data-testid="theme-grid">
+        {THEMES.map((theme, index) => {
+          const isSelected = selectedTheme === theme.id
+          const IconComponent = theme.icon
+
+          return (
+            <motion.button
+              key={theme.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: index * 0.1 }}
+              whileHover={{ 
+                scale: 1.02,
+                transition: { duration: 0.2 }
+              }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleThemeSelect(theme.id)}
+              className={`
+                group relative p-6 rounded-2xl border-2 text-left transition-all duration-300
+                ${isSelected 
+                  ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-orange-50 shadow-lg' 
+                  : `${theme.color} bg-white hover:shadow-lg`
+                }
+                cursor-pointer
+              `}
+            >
+              {/* Selected indicator */}
+              <AnimatePresence>
+                {isSelected && (
                   <motion.div
-                    animate={{
-                      scale: isSelected ? 1.1 : isHovered ? 1.05 : 1,
-                      rotate: isSelected ? 360 : 0,
-                    }}
-                    transition={{ duration: 0.3 }}
-                    className={`
-                      relative flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${theme.gradient}
-                      ${isSelected || isHovered ? 'shadow-lg' : 'shadow'}
-                    `}
-                    style={{
-                      boxShadow: isSelected || isHovered 
-                        ? `0 10px 30px -10px ${theme.color}` 
-                        : undefined
-                    }}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center"
                   >
-                    <Icon className="w-6 h-6 text-white" />
+                    <CheckCircle2 className="w-4 h-4 text-white" />
                   </motion.div>
-                  
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1 text-foreground">
-                      {theme.title}
-                    </h3>
-                    <p 
-                      id={`theme-${theme.id}-description`}
-                      className="text-sm text-muted-foreground leading-relaxed"
-                    >
-                      {theme.description}
-                    </p>
+                )}
+              </AnimatePresence>
+
+              {/* Icon with gradient background */}
+              <div className="flex items-start space-x-4">
+                <div className="relative">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} rounded-xl blur-lg opacity-70`}></div>
+                  <div className={`relative w-12 h-12 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
+                    <IconComponent className="w-6 h-6 text-white" />
                   </div>
-                  
-                  <AnimatePresence>
-                    {isSelected && (
-                      <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex items-center justify-center w-8 h-8 bg-primary rounded-full"
-                      >
-                        <Check className="w-4 h-4 text-primary-foreground" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
 
-                {/* Hover effect gradient */}
-                <motion.div
-                  className="absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300"
-                  style={{
-                    background: `radial-gradient(600px circle at ${isHovered ? '50%' : '0%'} 50%, ${theme.lightColor}40 0%, transparent 50%)`,
-                    opacity: isHovered ? 0.5 : 0,
-                  }}
-                />
-              </motion.button>
-            )
-          })}
-        </AnimatePresence>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-slate-900 group-hover:text-slate-800 transition-colors">
+                    {theme.title}
+                  </h3>
+                  <p className="text-sm text-slate-600 mt-1 leading-relaxed">
+                    {theme.description}
+                  </p>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center space-x-2 mt-3 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <span className="text-sm font-medium">Start reflection</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </motion.div>
+                </div>
+              </div>
+            </motion.button>
+          )
+        })}
       </div>
-      
+
+      {/* Selection confirmation */}
       <AnimatePresence>
         {selectedTheme && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="p-4 bg-primary/10 rounded-xl border border-primary/20"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="flex items-center justify-center space-x-2 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200"
           >
-            <div className="flex items-center space-x-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <p className="text-sm font-medium text-primary">
-                Great choice! Your reflection theme is set.
-              </p>
-            </div>
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <span className="text-emerald-800 font-medium">
+              Theme selected! Redirecting to writing interface...
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   )
-}
-
-// Export types for use in other components
-export type { ValidTheme, ThemeConfig } 
+} 

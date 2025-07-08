@@ -1,240 +1,264 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Flame, Calendar, TrendingUp } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import { format, differenceInDays, startOfDay, eachDayOfInterval, subDays } from 'date-fns'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Flame, Calendar, TrendingUp, Award, Target } from 'lucide-react'
+import { auth, journalService, StreakData } from '@/lib/supabase'
+import { 
+  format, 
+  isSameDay, 
+  subWeeks, 
+  startOfYear,
+  getDay
+} from 'date-fns'
+import { getMotivationalMessage } from '@/lib/utils'
 
-interface StreakData {
-  currentStreak: number
-  longestStreak: number
-  totalEntries: number
-  thisWeekEntries: number
-  lastEntryDate: Date | null
+interface DayData {
+  date: Date
+  count: number
+  hasEntry: boolean
 }
 
+interface ContributionLevel {
+  min: number
+  max: number
+  color: string
+  label: string
+}
+
+const CONTRIBUTION_LEVELS: ContributionLevel[] = [
+    { min: 0, max: 0, color: 'bg-slate-100', label: 'No entries' },
+    { min: 1, max: 1, color: 'bg-emerald-200', label: '1 entry' },
+    { min: 2, max: 3, color: 'bg-emerald-400', label: '2-3 entries' },
+    { min: 4, max: 6, color: 'bg-emerald-600', label: '4-6 entries' },
+    { min: 7, max: Infinity, color: 'bg-emerald-800', label: '7+ entries' }
+]
+
+const useStreakData = () => {
+    const [streakData, setStreakData] = useState<StreakData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+  
+    useEffect(() => {
+      const fetchStreakData = async () => {
+        try {
+          const { user } = await auth.getUser();
+          if (!user) {
+            setIsLoading(false);
+            return;
+          }
+  
+          const data = await journalService.getStreakData();
+          setStreakData(data);
+        } catch (err) {
+          setError('Could not load streak data.');
+          console.error('Failed to fetch streak data:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+  
+      fetchStreakData();
+    }, []);
+  
+    return { streakData, isLoading, error };
+};
+
 export function StreakWidget() {
-  const [streakData, setStreakData] = useState<StreakData>({
-    currentStreak: 0,
-    longestStreak: 0,
-    totalEntries: 0,
-    thisWeekEntries: 0,
-    lastEntryDate: null
-  })
-  const [loading, setLoading] = useState(true)
-  const [weeklyProgress, setWeeklyProgress] = useState<boolean[]>([])
-
-  useEffect(() => {
-    fetchStreakData()
-  }, [])
-
-  const fetchStreakData = async () => {
-    try {
-      const { data: entries, error } = await supabase
-        .from('journal_entries')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      if (!entries || entries.length === 0) {
-        setLoading(false)
-        return
-      }
-
-      // Convert dates and calculate streaks
-      const entryDates = entries.map(entry => startOfDay(new Date(entry.created_at)))
-      const uniqueDates = [...new Set(entryDates.map(date => date.getTime()))].map(time => new Date(time))
-      uniqueDates.sort((a, b) => b.getTime() - a.getTime())
-
-      // Calculate current streak
-      let currentStreak = 0
-      const today = startOfDay(new Date())
+    const { streakData, isLoading, error } = useStreakData();
+    const [timeRange, setTimeRange] = useState<'3M' | '6M' | '1Y'>('3M');
+    const [hoveredDay, setHoveredDay] = useState<DayData | null>(null);
+  
+    if (isLoading) {
+      return (
+        <div className="card-base p-4">
+          <div className="text-slate-600">Loading stats...</div>
+        </div>
+      );
+    }
+  
+    if (error) {
+      return (
+        <div className="card-base p-4">
+          <div className="text-red-500">{error}</div>
+        </div>
+      );
+    }
+  
+    if (!streakData) {
+      return (
+        <div className="card-base p-4">
+          <div className="text-slate-600">Sign in to track your streak.</div>
+        </div>
+      );
+    }
+  
+    const { currentStreak, longestStreak, totalEntries, entriesThisWeek, activity } = streakData;
+    const motivationalMessage = getMotivationalMessage(currentStreak);
+  
+    const organizeDataByWeeks = () => {
+      const weeks: DayData[][] = [];
+      let currentWeek: DayData[] = [];
       
-      if (uniqueDates.length > 0) {
-        const lastEntryDate = uniqueDates[0]
-        const daysSinceLastEntry = differenceInDays(today, lastEntryDate)
+      const activityData = (activity && Object.keys(activity).length > 0) 
+        ? Object.entries(activity).map(([date, count]) => ({ date: new Date(date), count: Number(count), hasEntry: Number(count) > 0 }))
+        : [];
+  
+      activityData.forEach((day, index) => {
+        const dayOfWeek = getDay(day.date);
         
-        if (daysSinceLastEntry <= 1) {
-          for (let i = 0; i < uniqueDates.length; i++) {
-            const currentDate = uniqueDates[i]
-            const expectedDate = subDays(today, i + (daysSinceLastEntry))
-            
-            if (currentDate.getTime() === expectedDate.getTime()) {
-              currentStreak++
-            } else {
-              break
-            }
-          }
+        if (dayOfWeek === 1 && currentWeek.length > 0) {
+          weeks.push(currentWeek);
+          currentWeek = [];
         }
-      }
-
-      // Calculate longest streak
-      let longestStreak = 0
-      let tempStreak = 0
-      
-      for (let i = 0; i < uniqueDates.length; i++) {
-        if (i === 0) {
-          tempStreak = 1
-        } else {
-          const daysDiff = differenceInDays(uniqueDates[i - 1], uniqueDates[i])
-          if (daysDiff === 1) {
-            tempStreak++
-          } else {
-            longestStreak = Math.max(longestStreak, tempStreak)
-            tempStreak = 1
-          }
+        currentWeek.push(day);
+        if (index === activityData.length - 1) {
+          weeks.push(currentWeek);
         }
-      }
-      longestStreak = Math.max(longestStreak, tempStreak)
-
-      // Calculate this week's entries
-      const weekStart = subDays(today, 6)
-      const thisWeekEntries = uniqueDates.filter(date => 
-        date >= weekStart && date <= today
-      ).length
-
-      // Generate weekly progress (last 7 days)
-      const last7Days = eachDayOfInterval({ start: weekStart, end: today })
-      const weeklyProgress = last7Days.map(day => 
-        uniqueDates.some(entryDate => entryDate.getTime() === day.getTime())
-      )
-
-      setStreakData({
-        currentStreak,
-        longestStreak,
-        totalEntries: uniqueDates.length,
-        thisWeekEntries,
-        lastEntryDate: uniqueDates[0] || null
-      })
-      setWeeklyProgress(weeklyProgress)
-      
-    } catch (error) {
-      console.error('Error fetching streak data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getMotivationalMessage = () => {
-    if (streakData.currentStreak === 0) {
-      return "Start your journey today! 🌟"
-    } else if (streakData.currentStreak === 1) {
-      return "Great start! Keep it going! 💪"
-    } else if (streakData.currentStreak < 7) {
-      return `${streakData.currentStreak} days strong! 🔥`
-    } else if (streakData.currentStreak < 30) {
-      return `Amazing ${streakData.currentStreak}-day streak! 🎯`
-    } else {
-      return `Incredible ${streakData.currentStreak}-day streak! 🏆`
-    }
-  }
-
-  if (loading) {
+      });
+      return weeks;
+    };
+  
+    const weeks = organizeDataByWeeks();
+  
     return (
-      <div className="card-base p-6 col-span-2">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-muted rounded-lg w-1/3"></div>
-          <div className="h-8 bg-muted rounded-lg w-1/2"></div>
-          <div className="flex space-x-2">
-            {Array(7).fill(0).map((_, i) => (
-              <div key={i} className="flex-1 h-8 bg-muted rounded-lg"></div>
+      <motion.div 
+        className="card-base p-4 space-y-4"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+              <Flame className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Reflection Streak</h3>
+              <p className="text-slate-600 text-xs">{motivationalMessage}</p>
+            </div>
+          </div>
+          
+          <div className="text-right">
+            <motion.div 
+              className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent"
+              initial={{ y: -10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              key={currentStreak}
+            >
+              {currentStreak}
+            </motion.div>
+            <div className="text-xs text-slate-600">{currentStreak === 1 ? 'day' : 'days'}</div>
+          </div>
+        </div>
+  
+        {/* Activity Controls */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-1">
+            <Calendar className="w-3 h-3 text-slate-600" />
+            <span className="text-xs font-medium text-slate-900">Activity</span>
+          </div>
+          <div className="flex rounded-md bg-slate-100 p-0.5">
+            {(['3M', '6M', '1Y'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setTimeRange(mode)}
+                className={`px-2 py-1 text-xs font-medium rounded transition-all ${
+                  timeRange === mode
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {mode}
+              </button>
             ))}
           </div>
         </div>
-      </div>
-    )
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="card-base card-hover p-6 col-span-2"
-    >
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl blur-lg opacity-70"></div>
-            <div className="relative w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
-              <Flame className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <div>
-            <h3 className="heading-2 font-bold">Your Streak</h3>
-            <p className="text-muted-foreground text-sm">{getMotivationalMessage()}</p>
-          </div>
-        </div>
-        
-        <div className="text-right">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-4xl font-bold gradient-text"
-          >
-            {streakData.currentStreak}
-          </motion.div>
-          <div className="text-sm text-muted-foreground">
-            {streakData.currentStreak === 1 ? 'day' : 'days'}
-          </div>
-        </div>
-      </div>
-
-      {/* Weekly Progress */}
-      <div className="space-y-3">
-        <div className="flex items-center space-x-2">
-          <Calendar className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">This Week</span>
-        </div>
-        
-        <div className="flex space-x-2">
-          {weeklyProgress.map((hasEntry, index) => {
-            const date = subDays(new Date(), 6 - index)
-            const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
-            
-            return (
-              <motion.div
-                key={index}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                className={`
-                  flex-1 h-10 rounded-xl flex items-center justify-center text-xs font-semibold transition-all
-                  ${hasEntry 
-                    ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg' 
-                    : isToday 
-                      ? 'bg-primary/20 text-primary border-2 border-primary/40' 
-                      : 'bg-muted text-muted-foreground'
+  
+        {/* Compact Contribution Graph */}
+        <div className="space-y-2">
+          <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 16)}, 1fr)` }}>
+            {weeks.slice(0, 16).map((week, weekIndex) => (
+              <div key={weekIndex} className="grid grid-rows-7 gap-0.5">
+                {week.map((day, dayIndex) => {
+                  if (!day.date || day.date.getTime() === 0) {
+                    return <div key={dayIndex} className="aspect-square" />
                   }
-                `}
-                title={format(date, 'MMM d')}
-              >
-                {format(date, 'd')}
-              </motion.div>
-            )
-          })}
+                  
+                  const level = CONTRIBUTION_LEVELS.find(level => day.count >= level.min && day.count <= level.max) || CONTRIBUTION_LEVELS[0]
+                  const isToday = isSameDay(day.date, new Date())
+              
+                  return (
+                    <div
+                      key={dayIndex}
+                      className={`
+                        aspect-square rounded-sm border cursor-pointer transition-all hover:ring-1 hover:ring-orange-400
+                        ${level.color}
+                        ${isToday ? 'ring-1 ring-orange-500' : 'border-transparent'}
+                      `}
+                      onMouseEnter={() => setHoveredDay(day)}
+                      onMouseLeave={() => setHoveredDay(null)}
+                      style={{ opacity: 1, transform: 'none' }}
+                      title={`${format(day.date, 'MMM d, yyyy')}: ${day.count} entries`}
+                    />
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-600">
+            <span>Less</span>
+            <div className="flex space-x-0.5">
+              {CONTRIBUTION_LEVELS.map(level => (
+                <div key={level.label} className={`w-2 h-2 rounded-sm ${level.color} border border-slate-200`} title={level.label} />
+              ))}
+            </div>
+            <span>More</span>
+          </div>
         </div>
         
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>6 days ago</span>
-          <span className="font-medium">Today</span>
+        {/* Stats Summary */}
+        <div className="grid grid-cols-4 gap-2 pt-3 border-t border-slate-200">
+          <div className="text-center space-y-1">
+            <div className="flex items-center justify-center">
+              <Flame className="w-3 h-3 text-orange-500" />
+            </div>
+            <div className="text-lg font-bold text-slate-900">{currentStreak}</div>
+            <div className="text-xs text-slate-600">Current</div>
+          </div>
+          <div className="text-center space-y-1">
+            <div className="flex items-center justify-center">
+              <Award className="w-3 h-3 text-emerald-500" />
+            </div>
+            <div className="text-lg font-bold text-slate-900">{longestStreak}</div>
+            <div className="text-xs text-slate-600">Longest</div>
+          </div>
+          <div className="text-center space-y-1">
+            <div className="flex items-center justify-center">
+              <Target className="w-3 h-3 text-blue-500" />
+            </div>
+            <div className="text-lg font-bold text-slate-900">{entriesThisWeek}</div>
+            <div className="text-xs text-slate-600">This Week</div>
+          </div>
+          <div className="text-center space-y-1">
+            <div className="flex items-center justify-center">
+              <TrendingUp className="w-3 h-3 text-purple-500" />
+            </div>
+            <div className="text-lg font-bold text-slate-900">{totalEntries}</div>
+            <div className="text-xs text-slate-600">Total</div>
+          </div>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-border">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-foreground">{streakData.longestStreak}</div>
-          <div className="text-xs text-muted-foreground">Longest Streak</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-foreground">{streakData.totalEntries}</div>
-          <div className="text-xs text-muted-foreground">Total Entries</div>
-        </div>
-      </div>
-    </motion.div>
-  )
+  
+        <AnimatePresence>
+          {hoveredDay && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="text-center text-sm text-slate-600"
+            >
+              <strong>{hoveredDay.count} entries</strong> on {format(hoveredDay.date, 'MMMM d, yyyy')}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
 } 

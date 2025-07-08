@@ -20,13 +20,13 @@ const serif = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Lumina Journal - Your Personal Leadership Companion",
-  description: "A beautiful digital journal designed for tech leaders to reflect, grow, and lead with clarity and purpose.",
-  keywords: ["journal", "tech leadership", "reflection", "leadership development", "professional growth"],
-  authors: [{ name: "Lumina Journal" }],
+  title: "Next Iteration - Your Leadership Growth Journal",
+  description: "Transform your leadership journey with thoughtful reflection. A sophisticated digital journal for tech leaders who embrace continuous growth.",
+  keywords: ["leadership journal", "tech leadership", "professional growth", "reflection", "continuous improvement", "leadership development"],
+  authors: [{ name: "Next Iteration" }],
   openGraph: {
-    title: "Lumina Journal - Your Personal Leadership Companion",
-    description: "A beautiful digital journal designed for tech leaders to reflect, grow, and lead with clarity and purpose.",
+    title: "Next Iteration - Your Leadership Growth Journal",
+    description: "Transform your leadership journey with thoughtful reflection. A sophisticated digital journal for tech leaders who embrace continuous growth.",
     type: "website",
   },
 };

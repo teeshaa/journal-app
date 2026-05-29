@@ -15,6 +15,7 @@ A digital journal app for tech leaders to reflect, grow, and track progress.
 - **Streak Tracker:** Contribution heatmap, streak stats
 - **Bookmarks & Tags:** Flag entries, auto-extracted tags
 - **Auth:** Passwordless magic-link via Supabase
+- **Presentation Slides:** Password-protected slide deck at `/slides`
 
 ---
 
@@ -30,6 +31,7 @@ A digital journal app for tech leaders to reflect, grow, and track progress.
      - `NEXT_PUBLIC_SUPABASE_URL`
      - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
      - `GROQ_API_KEY`
+     - `SLIDES_PASSWORD` (optional, required to unlock `/slides`)
 3. **Run locally**
    ```bash
    npm run dev
@@ -45,6 +47,16 @@ A digital journal app for tech leaders to reflect, grow, and track progress.
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `GROQ_API_KEY`
+  - `SLIDES_PASSWORD` (required for the public `/slides` deck)
+
+---
+
+## Presentation Slides
+
+- Public URL: `https://techleader-journal.vercel.app/slides`
+- Set `SLIDES_PASSWORD` in Vercel project settings, then redeploy.
+- Visitors enter the password once. Access is stored in an HTTP-only cookie for 30 days.
+- If `SLIDES_PASSWORD` is missing, the page shows a configuration message instead of the deck.
 
 ---
 

@@ -25,13 +25,13 @@ export function SlidesLogin() {
 
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        setError(data?.error ?? "Unable to verify password.");
+        setError(data?.error ?? "Wrong password. Try again.");
         return;
       }
 
       window.location.reload();
     } catch {
-      setError("Unable to verify password right now. Please try again.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -40,8 +40,12 @@ export function SlidesLogin() {
   return (
     <section className="slides-login-shell">
       <div className="slides-login-card">
-        <h1 className="slides-login-title">Presentation Slides</h1>
-        <p className="slides-login-subtitle">Enter the password to open the slide deck.</p>
+        <h1 className="slides-login-title">Slides</h1>
+        <p className="slides-login-subtitle">Enter the password to open the deck.</p>
+        <p className="slides-login-hint">
+          Hint: all lowercase, with an underscore between words.
+        </p>
+
         <form className="slides-login-form" onSubmit={onSubmit}>
           <input
             type="password"
@@ -53,9 +57,10 @@ export function SlidesLogin() {
             required
           />
           <button type="submit" className="slides-login-button" disabled={isSubmitting}>
-            {isSubmitting ? "Checking..." : "Open Slides"}
+            {isSubmitting ? "Opening..." : "Open slides"}
           </button>
         </form>
+
         {error ? <p className="slides-login-error">{error}</p> : null}
       </div>
     </section>

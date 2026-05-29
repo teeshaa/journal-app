@@ -849,29 +849,27 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, #ffffff 0%, transparent 70%),
-    linear-gradient(165deg, var(--brand-off-white) 0%, #e8edf4 50%, #dfe6ef 100%);
+  background: var(--brand-off-white);
 }
 
 .slides-login-card,
 .slides-config-card {
-  width: min(430px, 100%);
-  border-radius: 20px;
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: var(--shadow-lg);
+  width: min(380px, 100%);
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-md);
   padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .slides-login-title,
 .slides-config-title {
   margin: 0;
-  font-size: 1.5rem;
-  line-height: 1.25;
+  font-size: 1.75rem;
+  line-height: 1.2;
   letter-spacing: -0.02em;
   color: var(--text-primary);
 }
@@ -883,17 +881,34 @@
   line-height: 1.5;
 }
 
+.slides-login-hint {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff9eb;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.slides-login-hint code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  color: var(--brand-blue);
+}
+
 .slides-login-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .slides-login-input {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--stroke);
-  background: var(--surface);
+  background: #ffffff;
   color: var(--text-primary);
   padding: 12px 14px;
   font-size: 0.95rem;
@@ -903,20 +918,25 @@
   color: var(--text-tertiary);
 }
 
+.slides-login-input:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+}
+
 .slides-login-button {
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 12px 14px;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   color: #ffffff;
-  background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 100%);
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  background: var(--brand-blue);
+  transition: background 0.15s ease;
 }
 
 .slides-login-button:hover {
-  transform: translateY(-1px);
+  background: var(--brand-navy);
 }
 
 .slides-login-button:disabled {
@@ -926,6 +946,6 @@
 
 .slides-login-error {
   margin: 0;
-  color: #b00020;
+  color: #b42318;
   font-size: 0.875rem;
 }

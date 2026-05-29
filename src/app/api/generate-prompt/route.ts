@@ -28,7 +28,6 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseAnonKey)
 }
 
-const GROQ_API_KEY = validateGroqApiKey()
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 // Valid theme types - no defaults
@@ -322,10 +321,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.log('🌐 API Endpoint:', GROQ_API_URL)
     console.log('================================')
 
+    const groqApiKey = validateGroqApiKey()
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${groqApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestPayload)
